@@ -9,9 +9,40 @@ import SwiftUI
 
 @main
 struct CastControlApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @StateObject private var displayManager = DisplayManager()
+    @StateObject private var desktopVisibility = DesktopVisibilityController()
+
     var body: some Scene {
-        WindowGroup {
-            ContentView()
+        MenuBarExtra("CastControl", systemImage: "display.2") {
+            ContentView(
+                displayManager: displayManager,
+                desktopVisibility: desktopVisibility
+            )
+                .onAppear {
+                    displayManager.refresh()
+                }
         }
+        .menuBarExtraStyle(.window)
+
+        Window("About CastControl", id: "about") {
+            AboutView()
+        }
+        .windowResizability(.contentSize)
+
+        Window("Arrange Displays", id: "arrange") {
+            DisplayArrangementView(displayManager: displayManager)
+        }
+        .windowResizability(.contentSize)
+    }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.accessory)
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        DesktopVisibilityController.restoreIfNeeded()
     }
 }
