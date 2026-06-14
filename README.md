@@ -25,6 +25,8 @@ I often connect my Mac to external displays, but switching between duplicate/mir
 
 ## Build
 
+No signed release build is currently provided. To try CastControl, clone the repository and build it in Xcode.
+
 1. Open `CastControl.xcodeproj` in Xcode.
 2. Select the `CastControl` scheme.
 3. Choose your Mac as the run destination.
@@ -35,6 +37,8 @@ I often connect my Mac to external displays, but switching between duplicate/mir
 CastControl changes system-level display and desktop settings. Some behaviour may depend on macOS version, connected display type, Sidecar/AirPlay behaviour, and available system APIs.
 
 Hiding desktop clutter changes global macOS desktop settings for icons and widgets. CastControl stores the previous values and restores them when clutter is shown again or the app quits, but Finder and the desktop may briefly refresh when those settings are applied.
+
+External display sound output selection is experimental. It should only appear when macOS exposes a compatible audio output device for the connected display, and I have not tested it across any HDMI/projector setup with audio output yet.
 
 ## License
 
