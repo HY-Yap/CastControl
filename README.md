@@ -2,7 +2,7 @@
 
 A simple macOS menu bar utility for quickly managing presentation-related display settings.
 
-Built for personal use to reduce the need to open System Settings every time you want to switch between mirrored and extended displays, arrange external screens, select display audio output, or hide desktop clutter while presenting.
+This is an early personal project, built to reduce the need to open System Settings every time you want to switch between mirrored and extended displays, arrange external screens, select display audio output, or hide desktop clutter while presenting.
 
 ## Features
 
@@ -21,10 +21,20 @@ I often connect my Mac to external displays, but switching between duplicate/mir
 ## Requirements
 
 * macOS
+* Xcode
+
+## Build
+
+1. Open `CastControl.xcodeproj` in Xcode.
+2. Select the `CastControl` scheme.
+3. Choose your Mac as the run destination.
+4. Build and run with `Cmd-R`.
 
 ## Notes
 
 CastControl changes system-level display and desktop settings. Some behaviour may depend on macOS version, connected display type, Sidecar/AirPlay behaviour, and available system APIs.
+
+Hiding desktop clutter changes global macOS desktop settings for icons and widgets. CastControl stores the previous values and restores them when clutter is shown again or the app quits, but Finder and the desktop may briefly refresh when those settings are applied.
 
 ## License
 

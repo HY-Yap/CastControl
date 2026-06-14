@@ -40,6 +40,7 @@ struct CastControlApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        DesktopVisibilityController.restoreIfNeeded()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
