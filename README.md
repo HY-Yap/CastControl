@@ -28,4 +28,4 @@ CastControl changes system-level display and desktop settings. Some behaviour ma
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the GNU General Public License v3.0.
