@@ -1,4 +1,4 @@
-# CastControl
+# CastControl v0.1.0
 
 A simple macOS menu bar utility for quickly managing presentation-related display settings.
 
