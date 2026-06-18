@@ -38,7 +38,7 @@ CastControl changes system-level display and desktop settings. Some behaviour ma
 
 Hiding desktop clutter changes global macOS desktop settings for icons and widgets. CastControl stores the previous values and restores them when clutter is shown again or the app quits, but Finder and the desktop may briefly refresh when those settings are applied.
 
-External display sound output selection is experimental. It should only appear when macOS exposes a compatible audio output device for the connected display, and I have not tested it across any HDMI/projector setup with audio output yet.
+As of testing with macOS 26, the system may expose mirrored displays differently from extended displays. If an external display is first connected while already in Mirror mode, CastControl may initially show a generic name such as “Display 2” instead of the monitor’s actual name. Switching to Extend mode once should allow CastControl to detect and cache the correct display name, after which it should continue using the better name when switching back to Mirror mode.
 
 ## License
 
