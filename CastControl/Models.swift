@@ -10,7 +10,9 @@ import Foundation
 
 struct ManagedDisplay: Identifiable, Equatable {
     let id: CGDirectDisplayID
+    let identity: DisplayIdentity
     let name: String
+    let aliases: [String]
     let isBuiltin: Bool
     let mirrorsDisplayID: CGDirectDisplayID
     let isInMirrorSet: Bool
@@ -57,6 +59,21 @@ struct ManagedDisplay: Identifiable, Equatable {
         default:
             return modeDescription
         }
+    }
+}
+
+struct DisplayIdentity: Hashable, Equatable {
+    let vendorID: UInt32
+    let modelID: UInt32
+    let serialNumber: UInt32
+    let fallbackDisplayID: CGDirectDisplayID
+
+    var cacheKey: String {
+        if vendorID != 0 || modelID != 0 || serialNumber != 0 {
+            return "vendor:\(vendorID)-model:\(modelID)-serial:\(serialNumber)"
+        }
+
+        return "display-id:\(fallbackDisplayID)"
     }
 }
 

@@ -16,6 +16,7 @@ final class DisplayManager: ObservableObject {
     @Published var defaultAudioOutputDeviceID: AudioDeviceID?
 
     private var reconfigurationCallbackRegistered = false
+    private var displayNameCache: [String: String] = [:]
     var previousAudioOutputDeviceID: AudioDeviceID?
 
     var externalDisplays: [ManagedDisplay] {
@@ -63,12 +64,43 @@ final class DisplayManager: ObservableObject {
         let screenNames = Self.localizedScreenNamesByDisplayID()
         displays = onlineDisplays
             .map { displayID in
-                let displayName = Self.displayName(for: displayID, localizedScreenName: screenNames[displayID])
-                let isSidecar = Self.isSidecarName(displayName)
+                let identity = Self.displayIdentity(for: displayID)
+                let localizedName = screenNames[displayID]?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let ioName = Self.ioDisplayName(for: displayID)?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let fallbackName = Self.fallbackName(for: displayID)
+                let cachedName = displayNameCache[identity.cacheKey]
+                let displayName = resolvedDisplayName(
+                    localizedName: localizedName,
+                    ioName: ioName,
+                    cachedName: cachedName,
+                    fallbackName: fallbackName
+                )
+                let aliases = Self.displayAliases(
+                    displayName: displayName,
+                    localizedName: localizedName,
+                    ioName: ioName,
+                    cachedName: cachedName,
+                    fallbackName: fallbackName
+                )
+
+                if !Self.isGenericDisplayName(displayName) {
+                    displayNameCache[identity.cacheKey] = displayName
+                }
+
+                Self.debugLog(
+                    """
+                    display id=\(displayID) vendor=\(identity.vendorID) model=\(identity.modelID) serial=\(identity.serialNumber) \
+                    localized=\(Self.debugValue(localizedName)) io=\(Self.debugValue(ioName)) cached=\(Self.debugValue(cachedName)) final=\(displayName)
+                    """
+                )
+
+                let isSidecar = aliases.contains(where: Self.isSidecarName)
 
                 return ManagedDisplay(
                     id: displayID,
+                    identity: identity,
                     name: displayName,
+                    aliases: aliases,
                     isBuiltin: CGDisplayIsBuiltin(displayID) != 0,
                     mirrorsDisplayID: CGDisplayMirrorsDisplay(displayID),
                     isInMirrorSet: CGDisplayIsInMirrorSet(displayID) != 0,
@@ -84,6 +116,7 @@ final class DisplayManager: ObservableObject {
             }
 
         refreshAudioOutputs()
+        logAudioMatchesForDisplays()
     }
 
     func mirrorToMainDisplay(_ display: ManagedDisplay, optimization: MirrorOptimization) {
@@ -161,6 +194,15 @@ final class DisplayManager: ObservableObject {
         }
 
         refresh()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.refresh()
+        }
+    }
+
+    private func logAudioMatchesForDisplays() {
+        for display in externalDisplays {
+            _ = audioOutput(for: display)
+        }
     }
 
     private func registerForDisplayChanges() {
@@ -185,16 +227,59 @@ final class DisplayManager: ObservableObject {
         })
     }
 
-    private static func displayName(for displayID: CGDirectDisplayID, localizedScreenName: String?) -> String {
-        if let localizedScreenName, !localizedScreenName.isEmpty {
-            return localizedScreenName
+    private func resolvedDisplayName(
+        localizedName: String?,
+        ioName: String?,
+        cachedName: String?,
+        fallbackName: String
+    ) -> String {
+        if let localizedName, !Self.isGenericDisplayName(localizedName) {
+            return localizedName
         }
 
-        if let ioDisplayName = ioDisplayName(for: displayID), !ioDisplayName.isEmpty {
-            return ioDisplayName
+        if let ioName, !Self.isGenericDisplayName(ioName) {
+            return ioName
         }
 
-        return fallbackName(for: displayID)
+        if let cachedName, !Self.isGenericDisplayName(cachedName) {
+            return cachedName
+        }
+
+        if let localizedName, !localizedName.isEmpty {
+            return localizedName
+        }
+
+        if let ioName, !ioName.isEmpty {
+            return ioName
+        }
+
+        return fallbackName
+    }
+
+    private static func displayIdentity(for displayID: CGDirectDisplayID) -> DisplayIdentity {
+        DisplayIdentity(
+            vendorID: CGDisplayVendorNumber(displayID),
+            modelID: CGDisplayModelNumber(displayID),
+            serialNumber: CGDisplaySerialNumber(displayID),
+            fallbackDisplayID: displayID
+        )
+    }
+
+    private static func displayAliases(
+        displayName: String,
+        localizedName: String?,
+        ioName: String?,
+        cachedName: String?,
+        fallbackName: String
+    ) -> [String] {
+        var seenAliases = Set<String>()
+        let aliases: [String?] = [displayName, localizedName, ioName, cachedName, fallbackName]
+        return aliases
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .filter { alias in
+                seenAliases.insert(alias).inserted
+            }
     }
 
     private static func fallbackName(for displayID: CGDirectDisplayID) -> String {
@@ -203,6 +288,18 @@ final class DisplayManager: ObservableObject {
         }
 
         return "Display \(displayID)"
+    }
+
+    nonisolated static func isGenericDisplayName(_ name: String?) -> Bool {
+        guard let name, !name.isEmpty else {
+            return true
+        }
+
+        let normalizedName = name
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return normalizedName.range(of: #"^display( \d+)?$"#, options: .regularExpression) != nil
     }
 
     private static func ioDisplayName(for displayID: CGDirectDisplayID) -> String? {
@@ -255,7 +352,19 @@ final class DisplayManager: ObservableObject {
         return nil
     }
 
-    private static func isSidecarName(_ name: String) -> Bool {
+    static func debugLog(_ message: String) {
+        print("[CastControl] \(message)")
+    }
+
+    static func debugValue(_ value: String?) -> String {
+        guard let value, !value.isEmpty else {
+            return "nil"
+        }
+
+        return "\"\(value)\""
+    }
+
+    nonisolated private static func isSidecarName(_ name: String) -> Bool {
         let normalizedName = name.localizedLowercase
         return normalizedName.contains("sidecar") || normalizedName.contains("airplay")
     }

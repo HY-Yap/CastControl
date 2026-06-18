@@ -12,18 +12,24 @@ extension DisplayManager {
             return nil
         }
 
-        let displayName = Self.normalizedAudioMatchName(display.name)
-        guard !displayName.isEmpty else {
-            return nil
-        }
+        let displayNames = display.aliases
+            .filter { !Self.isGenericDisplayName($0) }
+            .map(Self.normalizedAudioMatchName)
+            .filter { !$0.isEmpty }
 
-        if let exactMatch = audioOutputDevices.first(where: { $0.normalizedName == displayName }) {
+        if let exactMatch = audioOutputDevices.first(where: { device in
+            displayNames.contains(device.normalizedName)
+        }) {
+            Self.debugLog("audio match display=\(display.id) aliases=\(display.aliases) matched=\(exactMatch.name) method=exact")
             return exactMatch
         }
 
-        if let containedMatch = audioOutputDevices.first(where: {
-            $0.normalizedName.contains(displayName) || displayName.contains($0.normalizedName)
+        if let containedMatch = audioOutputDevices.first(where: { device in
+            displayNames.contains { displayName in
+                device.normalizedName.contains(displayName) || displayName.contains(device.normalizedName)
+            }
         }) {
+            Self.debugLog("audio match display=\(display.id) aliases=\(display.aliases) matched=\(containedMatch.name) method=contained")
             return containedMatch
         }
 
@@ -32,9 +38,11 @@ extension DisplayManager {
         }
 
         if genericDisplayOutputs.count == 1, externalDisplays.count == 1 {
+            Self.debugLog("audio match display=\(display.id) aliases=\(display.aliases) matched=\(genericDisplayOutputs[0].name) method=single-generic-output")
             return genericDisplayOutputs[0]
         }
 
+        Self.debugLog("audio match display=\(display.id) aliases=\(display.aliases) matched=nil")
         return nil
     }
 
@@ -60,6 +68,9 @@ extension DisplayManager {
     func refreshAudioOutputs() {
         audioOutputDevices = Self.outputAudioDevices()
         defaultAudioOutputDeviceID = Self.defaultAudioOutputDeviceID()
+        Self.debugLog(
+            "audio outputs detected=\(audioOutputDevices.map { "\($0.id):\($0.name)" }) default=\(defaultAudioOutputDeviceID.map(String.init) ?? "nil")"
+        )
 
         if
             let previousAudioOutputDeviceID,
@@ -217,7 +228,7 @@ extension DisplayManager {
         ) == noErr
     }
 
-    private static func normalizedAudioMatchName(_ name: String) -> String {
+    nonisolated private static func normalizedAudioMatchName(_ name: String) -> String {
         name
             .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
@@ -226,7 +237,7 @@ extension DisplayManager {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private static func isGenericDisplayAudioName(_ normalizedName: String) -> Bool {
+    nonisolated private static func isGenericDisplayAudioName(_ normalizedName: String) -> Bool {
         normalizedName == "hdmi"
             || normalizedName.contains("hdmi")
             || normalizedName.contains("displayport")
@@ -234,7 +245,7 @@ extension DisplayManager {
             || normalizedName.contains("usb c display")
     }
 
-    private static func isMacSpeakerName(_ normalizedName: String) -> Bool {
+    nonisolated private static func isMacSpeakerName(_ normalizedName: String) -> Bool {
         normalizedName.contains("macbook") && normalizedName.contains("speaker")
             || normalizedName.contains("built in output")
             || normalizedName.contains("internal speaker")
