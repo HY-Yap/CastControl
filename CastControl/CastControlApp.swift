@@ -12,12 +12,14 @@ struct CastControlApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var displayManager = DisplayManager()
     @StateObject private var desktopVisibility = DesktopVisibilityController()
+    @StateObject private var preventSleep = PreventSleepController()
 
     var body: some Scene {
         MenuBarExtra("CastControl", systemImage: "display.2") {
             ContentView(
                 displayManager: displayManager,
-                desktopVisibility: desktopVisibility
+                desktopVisibility: desktopVisibility,
+                preventSleep: preventSleep
             )
                 .onAppear {
                     displayManager.refresh()
@@ -45,5 +47,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         DesktopVisibilityController.restoreIfNeeded()
+        PreventSleepController.releaseActiveAssertion()
     }
 }

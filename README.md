@@ -11,6 +11,7 @@ This is an early personal project, built to reduce the need to open System Setti
 * Arrange extended displays from a simple utility window
 * Select a compatible external display as the system sound output
 * Hide or show desktop icons and widgets
+* Keep the Mac awake and display on while CastControl is running
 * Open macOS Display Settings quickly
 * Runs as a lightweight menu bar app
 
@@ -37,6 +38,8 @@ No signed release build is currently provided. To try CastControl, clone the rep
 CastControl changes system-level display and desktop settings. Some behaviour may depend on macOS version, connected display type, Sidecar/AirPlay behaviour, and available system APIs.
 
 Hiding desktop clutter changes global macOS desktop settings for icons and widgets. CastControl stores the previous values and restores them when clutter is shown again or the app quits, but Finder and the desktop may briefly refresh when those settings are applied.
+
+Prevent Sleep uses a temporary macOS power assertion while CastControl is running to keep the Mac awake and the display on. It does not permanently change your macOS Battery or Display sleep settings. CastControl releases the assertion when Prevent Sleep is turned off or when the app quits.
 
 As of testing with macOS 26, the system may expose mirrored displays differently from extended displays. If an external display is first connected while already in Mirror mode, CastControl may initially show a generic name such as “Display 2” instead of the monitor’s actual name. Switching to Extend mode once should allow CastControl to detect and cache the correct display name, after which it should continue using the better name when switching back to Mirror mode.
 

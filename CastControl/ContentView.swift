@@ -11,6 +11,7 @@ struct ContentView: View {
     @Environment(\.openWindow) private var openWindow
     @ObservedObject var displayManager: DisplayManager
     @ObservedObject var desktopVisibility: DesktopVisibilityController
+    @ObservedObject var preventSleep: PreventSleepController
     @State private var expandedDisplayIDs: Set<CGDirectDisplayID> = []
 
     var body: some View {
@@ -22,11 +23,22 @@ struct ContentView: View {
 
             PanelDivider()
 
-            PanelActionRow(
-                title: desktopVisibility.actionTitle,
-                systemImage: desktopVisibility.actionSystemImage
-            ) {
-                desktopVisibility.toggleDesktopClutter()
+            VStack(spacing: 0) {
+                QuickActionRow(
+                    title: desktopVisibility.actionTitle,
+                    systemImage: desktopVisibility.actionSystemImage,
+                    isSelected: desktopVisibility.clutterState == .hidden
+                ) {
+                    desktopVisibility.toggleDesktopClutter()
+                }
+
+                QuickActionRow(
+                    title: "Prevent Sleep",
+                    systemImage: preventSleep.actionSystemImage,
+                    isSelected: preventSleep.isPreventingSleep
+                ) {
+                    preventSleep.togglePreventSleep()
+                }
             }
             .padding(.horizontal, 8)
 
@@ -86,6 +98,7 @@ struct ContentView: View {
         .background(.regularMaterial)
         .onAppear {
             desktopVisibility.refresh()
+            preventSleep.refresh()
         }
     }
 
@@ -95,6 +108,70 @@ struct ContentView: View {
         } else {
             expandedDisplayIDs.insert(displayID)
         }
+    }
+}
+
+private struct QuickActionRow: View {
+    let title: String
+    let systemImage: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 11) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(isSelected ? .white : .secondary)
+                    .frame(width: 28, height: 28)
+                    .background(iconBackground, in: Circle())
+
+                Text(title)
+                    .font(.system(size: 13))
+                    .foregroundStyle(.primary)
+
+                Spacer()
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+            .animation(.easeInOut(duration: 0.16), value: isSelected)
+        }
+        .buttonStyle(QuickActionButtonStyle(isHovered: isHovered))
+        .onHover { isHovered = $0 }
+    }
+
+    private var iconBackground: Color {
+        if isSelected {
+            return Color(nsColor: .systemBlue)
+        }
+
+        return Color.primary.opacity(0.06)
+    }
+}
+
+private struct QuickActionButtonStyle: ButtonStyle {
+    let isHovered: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(rowBackground(isPressed: configuration.isPressed), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .animation(.easeInOut(duration: 0.12), value: isHovered)
+            .animation(.easeInOut(duration: 0.08), value: configuration.isPressed)
+    }
+
+    private func rowBackground(isPressed: Bool) -> Color {
+        if isPressed {
+            return Color.primary.opacity(0.11)
+        }
+
+        if isHovered {
+            return Color.primary.opacity(0.07)
+        }
+
+        return .clear
     }
 }
 
