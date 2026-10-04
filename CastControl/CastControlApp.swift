@@ -40,12 +40,44 @@ struct CastControlApp: App {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var isPrimaryInstance = false
+
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        let current = NSRunningApplication.current
+        guard let bundleIdentifier = current.bundleIdentifier else {
+            NSApp.terminate(nil)
+            return
+        }
+
+        // Use a stable ordering so simultaneous launches do not reject each other.
+        let existingInstance = NSRunningApplication.runningApplications(
+            withBundleIdentifier: bundleIdentifier
+        ).first { application in
+            guard application.processIdentifier != current.processIdentifier,
+                  !application.isTerminated else { return false }
+            if let otherLaunch = application.launchDate,
+               let currentLaunch = current.launchDate,
+               otherLaunch != currentLaunch {
+                return otherLaunch < currentLaunch
+            }
+            return application.processIdentifier < current.processIdentifier
+        }
+
+        guard existingInstance == nil else {
+            NSApp.terminate(nil)
+            return
+        }
+        isPrimaryInstance = true
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
+        guard isPrimaryInstance else { return }
         NSApp.setActivationPolicy(.accessory)
         DesktopVisibilityController.restoreIfNeeded()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        guard isPrimaryInstance else { return }
         DesktopVisibilityController.restoreIfNeeded()
         PreventSleepController.releaseActiveAssertion()
     }
